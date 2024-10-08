@@ -6,10 +6,10 @@ from streamlit_drawable_canvas import st_canvas
 import numpy as np
 
 # Load the Qwen2-VL model and processor 
-device = 'mps'
+device = torch.device('mps' if torch.has_mps else 'cpu')
 model = Qwen2VLForConditionalGeneration.from_pretrained(
     "Qwen/Qwen2-VL-2B-Instruct", torch_dtype="auto"
-)
+).to(device)
 processor = AutoProcessor.from_pretrained("Qwen/Qwen2-VL-2B-Instruct")
 
 # Function to perform OCR and solve the math problem using Qwen2-VL
@@ -21,26 +21,28 @@ def solve_math_problem(image):
                 "role": "user",
                 "content": [
                     {"type": "image", "image": image},
-                    {"type": "text", "text": "Solve the math problem in the image and provide only the answer. For example:\n\nProblem: 2 + 2 = ?\nAnswer: 4"},
+                    {"type": "text", "text": "Solve the math problem in the image and provide only the answer."},
                 ],
             }
         ]
         
         text_input = processor.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
-        inputs = processor(images=image, text=[text_input], padding=True, return_tensors="pt").to("cpu")
+        inputs = processor(images=image, text=[text_input], padding=True, return_tensors="pt").to(device)
 
         # Generate text using the model
         generated_ids = model.generate(**inputs, max_new_tokens=128)
         extracted_text = processor.batch_decode(generated_ids, skip_special_tokens=True, clean_up_tokenization_spaces=False)[0]
+        
+        # Handle the response using the assistant marker
         assistant_marker = "assistant\n"
         if assistant_marker in extracted_text:
+            # Split the output at the assistant marker and extract the part after it
             assistant_response = extracted_text.split(assistant_marker)[-1].strip()
         else:
+            # If no marker is found, return the full response as fallback
             assistant_response = extracted_text.strip()
 
         return assistant_response
-        
-        # return extracted_text
     except Exception as e:
         return f"Error occurred during OCR: {str(e)}"
 
