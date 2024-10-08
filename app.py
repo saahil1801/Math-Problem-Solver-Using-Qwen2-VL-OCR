@@ -6,10 +6,10 @@ from streamlit_drawable_canvas import st_canvas
 import numpy as np
 
 # Load the Qwen2-VL model and processor 
-device = torch.device('mps' if torch.has_mps else 'cpu')
+# device = torch.device('mps' if torch.has_mps else 'cpu')
 model = Qwen2VLForConditionalGeneration.from_pretrained(
     "Qwen/Qwen2-VL-2B-Instruct", torch_dtype="auto"
-).to(device)
+)
 processor = AutoProcessor.from_pretrained("Qwen/Qwen2-VL-2B-Instruct")
 
 # Function to perform OCR and solve the math problem using Qwen2-VL
@@ -27,7 +27,7 @@ def solve_math_problem(image):
         ]
         
         text_input = processor.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
-        inputs = processor(images=image, text=[text_input], padding=True, return_tensors="pt").to(device)
+        inputs = processor(images=image, text=[text_input], padding=True, return_tensors="pt")
 
         # Generate text using the model
         generated_ids = model.generate(**inputs, max_new_tokens=128)
